@@ -1,8 +1,9 @@
 import numpy as np
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QFileDialog, QLabel, QLineEdit, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QCheckBox
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QFileDialog, QLabel, QLineEdit, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QCheckBox, QRadioButton
 from PyQt5.QtCore import Qt
 from PIL import Image, ImageDraw
 from A_star import A_star
+from Fload import flood_fill
 
 class GridDialog(QWidget):
     def __init__(self):
@@ -100,13 +101,21 @@ class GridWidget(QWidget):
         buttons.addWidget(end_button)
         spaceItem = QSpacerItem(100, 100,QSizePolicy.Maximum , QSizePolicy.Expanding)
         buttons.addSpacerItem(spaceItem)
+        #select algorith radio buttons
+        self.fload = QRadioButton("Fload", self)
+        self.fload.clicked.connect(self.update_last_cell)
+        self.fload.setChecked(1)
+        buttons.addWidget(self.fload)
+        self.a_star = QRadioButton("A*", self)
+        self.a_star.clicked.connect(self.update_last_cell)        
+        buttons.addWidget(self.a_star)
         #autosolve checkbox
         self.auto_solve = QCheckBox()
         self.auto_solve.setText("Auto Solve")
         self.auto_solve.setChecked(1)
         buttons.addWidget(self.auto_solve)
         #solve button
-        solve_button = QPushButton("Solve")
+        solve_button = QPushButton("Step")
         solve_button.clicked.connect(self.solve)
         buttons.addWidget(solve_button)
         # set the layout and the window title
@@ -241,7 +250,10 @@ class GridWidget(QWidget):
     def automatic_solve(self):
         self.grid_clear_path()
         temp = self.get_grid()
-        path, reached_set, _ = A_star(temp[0],temp[1],temp[2])
+        if (self.a_star.isChecked()):
+            path, reached_set, _ = A_star(temp[0],temp[1],temp[2])
+        if (self.fload.isChecked()):
+            path, reached_set, _ = flood_fill(temp[0],temp[1],temp[2])
         reached_set.remove(self.start)
         if path:
             reached_set.remove(self.end)
@@ -259,19 +271,35 @@ class GridWidget(QWidget):
         if self.step_counter == 0:
             self.grid_clear_path()
         temp = self.get_grid()
-        path, reached_set, sequence = A_star(temp[0],temp[1],temp[2])
-        if (self.step_counter<len(sequence)-1):    
-            step = sequence[self.step_counter]
-            (coordinates, neighbors) = step
-            if not (coordinates==self.start or coordinates==self.end):
-                self.buttons[coordinates[0]][coordinates[1]].setStyleSheet("QPushButton{background-color : orange} QPushButton::checked{background-color : black;}")
-            for neighbor in neighbors:
-                (g_score,f_score) = neighbors[neighbor]
-                if not (neighbor==self.start or neighbor==self.end):
-                    self.buttons[neighbor[0]][neighbor[1]].setStyleSheet("QPushButton{background-color : yellow} QPushButton::checked{background-color : black;}")
-                    self.buttons[neighbor[0]][neighbor[1]].setText("H: "+str(int((f_score-g_score)*10))+"\nG: "+str(int(g_score*10))+"\n"+ str(int(10*f_score)))
-            self.step_counter = self.step_counter + 1
-        else:
-            if path:
-                for step in path[1:len(path)-1]:
-                    self.buttons[step[0]][step[1]].setStyleSheet("QPushButton{background-color : blue} QPushButton::checked{background-color : black;}")
+        if (self.a_star.isChecked()):
+            path, _, sequence = A_star(temp[0],temp[1],temp[2])
+            if (self.step_counter<len(sequence)-1):    
+                step = sequence[self.step_counter]
+                (coordinates, neighbors) = step
+                if not (coordinates==self.start or coordinates==self.end):
+                    self.buttons[coordinates[0]][coordinates[1]].setStyleSheet("QPushButton{background-color : orange} QPushButton::checked{background-color : black;}")
+                for neighbor in neighbors:
+                    (g_score,f_score) = neighbors[neighbor]
+                    if not (neighbor==self.start or neighbor==self.end):
+                        self.buttons[neighbor[0]][neighbor[1]].setStyleSheet("QPushButton{background-color : yellow} QPushButton::checked{background-color : black;}")
+                        self.buttons[neighbor[0]][neighbor[1]].setText("H: "+str(int((f_score-g_score)*10))+"\nG: "+str(int(g_score*10))+"\n"+ str(int(10*f_score)))
+                self.step_counter = self.step_counter + 1
+            else:
+                if path:
+                    for step in path[1:len(path)-1]:
+                        self.buttons[step[0]][step[1]].setStyleSheet("QPushButton{background-color : blue} QPushButton::checked{background-color : black;}")
+
+        if (self.fload.isChecked()):
+            path, _, sequence = flood_fill(temp[0],temp[1],temp[2])
+            if (self.step_counter<len(sequence)-1):   
+                step = sequence[self.step_counter]
+                for coordinates in step:
+                    score = step[coordinates]
+                    if not (coordinates==self.start or coordinates==self.end):
+                        self.buttons[coordinates[0]][coordinates[1]].setStyleSheet("QPushButton{background-color : yellow} QPushButton::checked{background-color : black;}")
+                        self.buttons[coordinates[0]][coordinates[1]].setText(str(int(score*10)))
+                self.step_counter = self.step_counter + 1
+            else:
+                if path:
+                    for step in path[1:len(path)-1]:
+                        self.buttons[step[0]][step[1]].setStyleSheet("QPushButton{background-color : blue} QPushButton::checked{background-color : black;}")
